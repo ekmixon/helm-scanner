@@ -85,10 +85,9 @@ class ImageScanner():
         return
         
     def _save_dockerfile(self,cmds, img):
-        file = open(f"results/{currentRunTimestamp}/dockerfiles/{img.id}.Dockerfile","w")
-        for i in cmds:
-            file.write(i)
-        file.close()
+        with open(f"results/{currentRunTimestamp}/dockerfiles/{img.id}.Dockerfile","w") as file:
+            for i in cmds:
+                file.write(i)
 
     def _parse_history(self, hist, rec=False):
         first_tag = False
@@ -101,14 +100,11 @@ class ImageScanner():
                     break
                 first_tag = True
             step = i['CreatedBy']
-            if "#(nop)" in step:
-                to_add = step.split("#(nop) ")[1]
-            else:
-                to_add = ("RUN {}".format(step))
+            to_add = step.split("#(nop) ")[1] if "#(nop)" in step else f"RUN {step}"
             to_add = to_add.replace("&&", "\\\n    &&")
             cmds.append(to_add.strip(' '))
         if not rec:
-            cmds.append("IMAGE {}".format(actual_tag))
+            cmds.append(f"IMAGE {actual_tag}")
         return cmds
 
     def download_twistcli(self, cli_file_name, docker_image_scanning_base_url):
@@ -123,7 +119,7 @@ class ImageScanner():
         open(cli_file_name, 'wb').write(response.content)
         st = os.stat(cli_file_name)
         os.chmod(cli_file_name, st.st_mode | stat.S_IEXEC)
-        helmscanner_logging.info(f'TwistCLI downloaded and has execute permission')
+        helmscanner_logging.info('TwistCLI downloaded and has execute permission')
 
     def parse_results(self, helmRepo, docker_image_name, image_id, twistcli_scan_result):
         headerRow = ['Scan Timestamp','Helm Repo','Image Name','Image Tag','Image SHA','Total', 'Critical', 'High', 'Medium','Low']

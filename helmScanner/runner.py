@@ -49,16 +49,18 @@ def extract(tar_url, extract_path='.'):
 def parse_helm_dependency_output(o):
     output = o.decode('utf-8')
     chart_dependencies={}
-    if "WARNING" in output:
-        #Helm output showing no deps, example: 'WARNING: no dependencies at helm-charts/charts/prometheus-kafka-exporter/charts\n'
-        pass
-    else: 
+    if "WARNING" not in output:
         lines = output.split('\n')
         for line in lines:
-            if line != "":
-                if not "NAME" in line:
-                    chart_name, chart_version, chart_repo, chart_status = line.split("\t")
-                    chart_dependencies.update({chart_name.rstrip():{'chart_name': chart_name.rstrip(), 'chart_version': chart_version.rstrip(), 'chart_repo': chart_repo.rstrip(), 'chart_status': chart_status.rstrip()}})
+            if line != "" and "NAME" not in line:
+                chart_name, chart_version, chart_repo, chart_status = line.split("\t")
+                chart_dependencies[chart_name.rstrip()] = {
+                    'chart_name': chart_name.rstrip(),
+                    'chart_version': chart_version.rstrip(),
+                    'chart_repo': chart_repo.rstrip(),
+                    'chart_status': chart_status.rstrip(),
+                }
+
     return chart_dependencies
 
 def scan_files():

@@ -67,17 +67,16 @@ class ArtifactHubCrawler:
         max_records = int(os.environ.get('MAX_RECORDS',default=300))
         helmscanner_logging.info("Artifacthub Helm crawler started.")
         try:
-            currentRepo = 0
             headers = {'X-API-KEY-ID': self.ARTIFACTHUB_TOKEN, 'X-API-KEY-SECRET': self.ARTIFACTHUB_TOKEN_SECRET}
             helmscanner_logging.info("Receiving latest ArtifactHub repo results.")
             response = requests.get(f"https://artifacthub.io/api/v1/repositories/search?offset={start_record}&limit={reposPerRequest}&kind=0", headers=headers)
             response.raise_for_status()
-            maxRepos = int(response.headers["pagination-total-count"]) if max_records > int(response.headers["pagination-total-count"]) else max_records
+            maxRepos = min(max_records, int(response.headers["pagination-total-count"]))
             self.logger.info(f"Found max repos {maxRepos}")
             jsonResponse = response.json()
             totalRepos = len(jsonResponse)
             # readjust maxRepos in the case we have a short list of responses returned
-            maxRepos = totalRepos if maxRepos > totalRepos else maxRepos          
+            maxRepos = min(maxRepos, totalRepos)
             offset = start_record + reposPerRequest
             while (maxRepos > totalRepos):
                 # Get the rest of the repos
@@ -88,9 +87,8 @@ class ArtifactHubCrawler:
                 offset += reposPerRequest
 
             self.logger.info(f"Found {totalRepos} Helm repositories.")
-            for repoResult in jsonResponse:
+            for currentRepo, repoResult in enumerate(jsonResponse, start=1):
                 thisRepoDict = {}
-                currentRepo += 1
                 try:
                     repoOrgName = repoResult['organization_name']
                 except:
@@ -104,9 +102,7 @@ class ArtifactHubCrawler:
                     chartPackagesInRepo = len(chartPackages['packages'])
                     self.logger.debug(f"{currentRepo}/{totalRepos} | found {chartPackagesInRepo} packages.")
                     thisRepoDict = {"repoName": repoResult['name'], "repoOrgName": repoOrgName, "repoCrawlResultsID": currentRepo, "repoTotalPackages": chartPackagesInRepo, "repoRaw": repoResult, "repoPackages": [] }
-                    currentChartPackage = 0
-                    for chartPackage in chartPackages['packages']:
-                        currentChartPackage += 1
+                    for currentChartPackage, chartPackage in enumerate(chartPackages['packages'], start=1):
                         totalPackages +=1
                         try:
                             # Downloads and package version details for each package.
